@@ -1,0 +1,118 @@
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Chat with Saurav</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+
+    <body class="bg-gray-100 flex flex-col min-h-screen justify-center items-center">
+
+        <div class="bg-white shadow-md rounded-lg overflow-hidden w-full max-w-2xl flex flex-col">
+            <!-- Chat Header -->
+            <div class="bg-blue-600 text-white text-center py-3 text-lg font-bold p-3">
+                💬 Chat with Saurav
+            </div>
+
+            <!-- Chat Messages Box -->
+            <div id="chatbox" class="flex flex-col space-y-3 p-4 h-80 overflow-y-auto">
+                <div class="text-center text-gray-500">Welcome! Ask me anything.</div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="bg-gray-200 p-3 flex items-center space-x-2">
+                <input id="messageInput" type="text"
+                    class="flex-grow p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                    placeholder="Type your message...">
+
+                <button id="sendButton"
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all duration-300">
+                    Send
+                </button>
+
+                <button id="clearButton"
+                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-all duration-300">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <script>
+            const chatbox = document.getElementById("chatbox");
+            const messageInput = document.getElementById("messageInput");
+            const sendButton = document.getElementById("sendButton");
+            const clearButton = document.getElementById("clearButton");
+
+            let websocket = null;
+            const chatId = crypto.randomUUID();
+            const systemPrompt = "You are an AI assistant with vast knowledge in various domains, including science, technology, education, business, health, and general knowledge. Your goal is to provide clear, informative, and engaging responses to users' questions in a friendly and professional manner.";
+
+            // Function to create chat message
+            function createMessageElement(text, alignment) {
+                const messageElement = document.createElement("div");
+                messageElement.className = `p-3 rounded-lg max-w-xs break-words 
+                    ${alignment === "left" ? "bg-gray-200 self-start" : "bg-blue-400 text-white self-end"}`;
+                messageElement.textContent = text;
+                chatbox.appendChild(messageElement);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            }
+
+            // Function to connect to WebSocket API
+            function connectWebSocket(message) {
+                if (websocket === null || websocket.readyState !== WebSocket.OPEN) {
+                    websocket = new WebSocket("wss://backend.buildpicoapps.com/api/chatbot/chat");
+
+                    let fullResponse = ""; // Store full response
+
+                    websocket.onopen = () => {
+                        websocket.send(JSON.stringify({
+                            chatId: chatId,
+                            appId: "wide-former", // अपने App ID से बदलें
+                            systemPrompt: systemPrompt,
+                            message: message
+                        }));
+                    };
+
+                    websocket.onmessage = (event) => {
+                        fullResponse += event.data; // Append incoming data
+                    };
+
+                    websocket.onclose = () => {
+                        createMessageElement(fullResponse, "left");  // Show full response at once
+                        websocket = null;
+                    };
+
+                    websocket.onerror = (error) => {
+                        createMessageElement("Error connecting to AI server.", "left");
+                        console.error("WebSocket Error:", error);
+                    };
+                }
+            }
+
+            // Event Listeners
+            sendButton.addEventListener("click", () => {
+                if (messageInput.value.trim() !== "") {
+                    const messageText = messageInput.value.trim();
+                    messageInput.value = "";
+                    createMessageElement(messageText, "right");  // User message right side
+                    connectWebSocket(messageText);
+                }
+            });
+
+            messageInput.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" && messageInput.value.trim() !== "") {
+                    event.preventDefault();
+                    sendButton.click();
+                }
+            });
+
+            clearButton.addEventListener("click", () => {
+                chatbox.innerHTML = '<div class="text-center text-gray-500">Welcome! Ask me anything.</div>';
+            });
+        </script>
+
+    </body>
+
+    </html>
